@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Personality Chatbot</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    #chat-container {
+      width: 100%;
+      max-width: 700px;
+      margin: 20px auto;
+      background: #e8f4ff;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      padding: 25px;
+      transition: all 0.3s ease;
+    }
+    #chat-box {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid seagreen;
+      padding: 15px;
+      background: #fafafa;
+      border-radius: 10px;
+      scroll-behavior: smooth;
+    }
+    .bot, .user {
+      margin: 12px 0;
+      padding: 12px 15px;
+      border-radius: 18px;
+      max-width: 85%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      animation: fadeIn 0.5s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .bot {
+      background: #e6f0ff;
+      text-align: left;
+      border-bottom-left-radius: 5px;
+    }
+    .user {
+      background: #d1ffd1;
+      text-align: right;
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    #input-area {
+      margin-top: 15px;
+      display: flex;
+    }
+    input {
+      flex: 1;
+      padding: 12px 15px;
+      border-radius: 25px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      transition: border 0.3s ease;
+    }
+    input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+    button {
+      padding: 12px 20px;
+      margin-left: 10px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 25px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #0056b3;
+      transform: translateY(-2px);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .progress-bar {
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+    .progress {
+      height: 100%;
+      background: #007bff;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    .options {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .option-btn {
+      flex: 1;
+      padding: 10px;
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .option-btn:hover {
+      background: #e0e0e0;
+    }
+    .option-btn.selected {
+      background: #007bff;
+      color: white;
+      border-color: #0056b3;
+    }
+    .trait-result {
+      margin: 15px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #007bff;
+    }
+    .trait-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .trait-bar {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      margin: 8px 0;
+    }
+    .trait-level {
+      height: 100%;
+      background: #007bff;
+      border-radius: 4px;
+      transition: width 1s ease;
+    }
+    .typing {
+      display: flex;
+      padding: 10px;
+      align-items: center;
+    }
+    .typing-dots {
+      display: flex;
+      gap: 4px;
+    }
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background: #007bff;
+      border-radius: 50%;
+      animation: typingAnimation 1.5s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes typingAnimation {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="chat-container">
+  <h2>AI Personality Chatbot</h2>
+  <div class="progress-bar">
+    <div class="progress" id="progress"></div>
+  </div>
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <input type="text" id="user-input" placeholder="Type your answer..." autofocus>
+    <button id="send-btn" onclick="submitAnswer()">Send</button>
+  </div>
+  <div id="options-area" style="display: none;"></div>
+</div>
+
+<script>
+  const questions = [
+    { text: "Do you enjoy spending time with large groups of people?", trait: "extroversion" },
+    { text: "Do you prefer deep one-on-one conversations over group activities?", trait: "extroversion", reverse: true },
+    { text: "Are you comfortable being the center of attention?", trait: "extroversion" },
+    
+    { text: "Do you enjoy exploring new ideas or concepts?", trait: "openness" },
+    { text: "Are you interested in art, music, or creative activities?", trait: "openness" },
+    { text: "Do you prefer familiar routines over new experiences?", trait: "openness", reverse: true },
+    
+    { text: "Do you keep your belongings neat and organized?", trait: "conscientiousness" },
+    { text: "Do you make detailed plans rather than being spontaneous?", trait: "conscientiousness" },
+    { text: "Do you often complete tasks thoroughly and on time?", trait: "conscientiousness" },
+    
+    { text: "Do you find it easy to understand how others are feeling?", trait: "agreeableness" },
+    { text: "Are you generally trusting of other people's intentions?", trait: "agreeableness" },
+    { text: "Do you enjoy helping others even when there's no benefit to you?", trait: "agreeableness" },
+    
+    { text: "Do you often worry about things that might go wrong?", trait: "neuroticism" },
+    { text: "Do you find it difficult to relax or unwind?", trait: "neuroticism" },
+    { text: "Are your emotions relatively stable regardless of the situation?", trait: "neuroticism", reverse: true }
+  ];
+
+  let index = 0;
+  const traits = {
+    extroversion: { score: 0, count: 0 },
+    openness: { score: 0, count: 0 },
+    conscientiousness: { score: 0, count: 0 },
+    agreeableness: { score: 0, count: 0 },
+    neuroticism: { score: 0, count: 0 }
+  };
+
+  const chatBox = document.getElementById("chat-box");
+  const userInput = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
+  const optionsArea = document.getElementById("options-area");
+  const progressBar = document.getElementById("progress");
+
+  // Event listeners
+  userInput.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      submitAnswer();
+    }
+  });
+
+  function updateProgress() {
+    const progress = (index / questions.length) * 100;
+    progressBar.style.width = `${progress}%`;
+  }
+
+  function appendMessage(text, sender) {
+    const msg = document.createElement("div");
+    msg.className = sender;
+    msg.textContent = text;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function showTypingIndicator() {
+    const typing = document.createElement("div");
+    typing.className = "bot typing";
+    typing.id = "typing-indicator";
+    
+    const dots = document.createElement("div");
+    dots.className = "typing-dots";
+    
+    for (let i = 0; i < 3; i++) {
+      const dot = document.createElement("div");
+      dot.className = "typing-dot";
+      dots.appendChild(dot);
+    }
+    
+    typing.appendChild(dots);
+    chatBox.appendChild(typing);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function removeTypingIndicator() {
+    const indicator = document.getElementById("typing-indicator");
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+
+  function askNextQuestion() {
+    if (index < questions.length) {
+      showTypingIndicator();
+      
+      // Hide text input area when showing options
+      document.getElementById("input-area").style.display = "none";
+      
+      setTimeout(() => {
+        removeTypingIndicator();
+        appendMessage(questions[index].text, "bot");
+        
+        // Show yes/no buttons with colors
+        optionsArea.style.display = "flex";
+        optionsArea.innerHTML = `
+          <button class="option-btn" style="background: #4CAF50; color: white;" onclick="selectOption('yes')">Yes</button>
+          <button class="option-btn" style="background: #2196F3; color: white;" onclick="selectOption('somewhat')">Somewhat</button>
+          <button class="option-btn" style="background: #f44336; color: white;" onclick="selectOption('no')">No</button>
+        `;
+        
+        updateProgress();
+      }, 1000);
+    } else {
+      showResults();
+    }
+  }
+
+  // Array of different appreciation messages
+  const appreciationMessages = [
+    "I'd love to hear your thoughts on these questions so far.",
+    "Any additional insights you'd like to share before we continue?",
+    "How are you feeling about the assessment so far?",
+    "Would you like to add any context to your previous answers?",
+    "Any reflections on the questions we've covered?"
+  ];
+
+  function selectOption(answer) {
+    appendMessage(`You: ${answer}`, "user");
+    
+    const trait = questions[index].trait;
+    const isReversed = questions[index].reverse || false;
+    
+    let score;
+    if (answer === "yes") score = isReversed ? 1 : 5;
+    else if (answer === "somewhat") score = 3;
+    else score = isReversed ? 5 : 1;
+    
+    traits[trait].score += score;
+    traits[trait].count++;
+    
+    index++;
+    optionsArea.style.display = "none";
+    
+    // Show chat input only after completing a trait category (every 3rd question)
+    if (index % 3 === 0 && index < questions.length) {
+      document.getElementById("input-area").style.display = "flex";
+      setTimeout(() => {
+        // Select a random appreciation message
+        const randomMessage = appreciationMessages[Math.floor(Math.random() * appreciationMessages.length)];
+        appendMessage(randomMessage, "bot");
+      }, 500);
+    } else {
+      setTimeout(askNextQuestion, 500);
+    }
+  }
+
+  // Array of different acknowledgment messages
+  const acknowledgmentMessages = [
+    "Thank you for sharing! Let's continue with the next set of questions.",
+    "I appreciate your insights. Moving on to the next questions.",
+    "That's helpful context. Let's proceed with the assessment.",
+    "Great! Now let's explore another aspect of your personality.",
+    "Thanks for your thoughtful response. Let's continue our assessment."
+  ];
+
+  function submitAnswer() {
+    const value = userInput.value.trim();
+    if (!value) return;
+    
+    appendMessage(`You: ${value}`, "user");
+    userInput.value = "";
+    
+    // Process the text input
+    showTypingIndicator();
+    
+    setTimeout(() => {
+      removeTypingIndicator();
+      // Select a random acknowledgment message
+      const randomMessage = acknowledgmentMessages[Math.floor(Math.random() * acknowledgmentMessages.length)];
+      appendMessage(randomMessage, "bot");
+      
+      // Hide text input area when transitioning to option buttons
+      document.getElementById("input-area").style.display = "none";
+      setTimeout(askNextQuestion, 800);
+    }, 800);
+  }
+
+  function calculateTraitLevel(trait) {
+    const avg = traits[trait].score / traits[trait].count;
+    return (avg / 5) * 100; // Convert to percentage
+  }
+
+  function getTraitDescription(trait, level) {
+    const descriptions = {
+      extroversion: {
+        high: "You're outgoing and energized by social interaction. You likely enjoy being around people and are comfortable in group settings.",
+        medium: "You balance social interaction with alone time well. You can enjoy group activities but also value your personal space.",
+        low: "You tend to be more reserved and may prefer deeper one-on-one connections over large social gatherings."
+      },
+      openness: {
+        high: "You're curious, imaginative, and open to new experiences. You likely appreciate art, adventure, and unconventional ideas.",
+        medium: "You have a healthy balance between tradition and innovation. You can appreciate new ideas while valuing established methods.",
+        low: "You tend to be practical and prefer familiar routines. You may focus more on concrete facts than abstract concepts."
+      },
+      conscientiousness: {
+        high: "You're organized, reliable, and detail-oriented. You likely plan ahead and follow through on your commitments.",
+        medium: "You balance structure with flexibility. You can be organized when needed but don't let plans restrict spontaneity.",
+        low: "You tend to be flexible and spontaneous. You may prefer to adapt to situations as they arise rather than planning extensively."
+      },
+      agreeableness: {
+        high: "You're compassionate, cooperative, and considerate of others' feelings. You likely seek harmony in relationships.",
+        medium: "You balance cooperation with standing your ground. You can work well with others while maintaining your boundaries.",
+        low: "You tend to be straightforward and may prioritize truth over tact. You might be more competitive than cooperative."
+      },
+      neuroticism: {
+        high: "You experience emotions intensely and may be more sensitive to stress. This can make you more empathetic but also more anxious.",
+        medium: "You have a balanced emotional response to situations. You feel appropriate emotions without being overwhelmed by them.",
+        low: "You tend to be emotionally stable and resilient to stress. You likely stay calm under pressure."
+      }
+    };
+    
+    if (level >= 70) return descriptions[trait].high;
+    if (level >= 40) return descriptions[trait].medium;
+    return descriptions[trait].low;
+  }
+
+  function getCareerSuggestions(traits) {
+    const e = calculateTraitLevel("extroversion");
+    const o = calculateTraitLevel("openness");
+    const c = calculateTraitLevel("conscientiousness");
+    const a = calculateTraitLevel("agreeableness");
+    const n = calculateTraitLevel("neuroticism");
+    
+    let suggestions = [];
+    
+    if (e > 70 && a > 60) {
+      suggestions.push("Sales, Public Relations, Teaching");
+    }
+    
+    if (o > 70 && c > 60) {
+      suggestions.push("Research, Design, Creative Direction");
+    }
+    
+    if (c > 70 && n < 40) {
+      suggestions.push("Project Management, Finance, Administration");
+    }
+    
+    if (a > 70 && e < 40) {
+      suggestions.push("Counseling, Healthcare, Support roles");
+    }
+    
+    if (o > 70 && e < 40) {
+      suggestions.push("Writing, Art, Technical Development");
+    }
+    
+    if (c > 70 && a > 60) {
+      suggestions.push("Human Resources, Operations Management");
+    }
+    
+    if (suggestions.length === 0) {
+      suggestions.push("Varied roles that balance your unique trait profile");
+    }
+    
+    return suggestions.join(", ");
+  }
+
+  function showResults() {
+    showTypingIndicator();
+    
+    setTimeout(() => {
+      removeTypingIndicator();
+      appendMessage("Analysis complete! Here's your personality profile:", "bot");
+      
+      // Hide input area during results
+      document.getElementById("input-area").style.display = "none";
+      
+      // Show results with animation
+      setTimeout(() => {
+        const traitNames = {
+          extroversion: "Extroversion",
+          openness: "Openness to Experience",
+          conscientiousness: "Conscientiousness",
+          agreeableness: "Agreeableness",
+          neuroticism: "Emotional Sensitivity"
+        };
+        
+        for (const trait in traits) {
+          const level = calculateTraitLevel(trait);
+          const description = getTraitDescription(trait, level);
+          
+          const resultDiv = document.createElement("div");
+          resultDiv.className = "trait-result";
+          resultDiv.innerHTML = `
+            <div class="trait-name">${traitNames[trait]}: ${Math.round(level)}%</div>
+            <div class="trait-bar">
+              <div class="trait-level" style="width: 0%"></div>
+            </div>
+            <div>${description}</div>
+          `;
+          
+          chatBox.appendChild(resultDiv);
+          
+          // Animate the bar
+          setTimeout(() => {
+            resultDiv.querySelector(".trait-level").style.width = `${level}%`;
+          }, 100);
+        }
+        
+        // Career suggestions
+        setTimeout(() => {
+          const careers = getCareerSuggestions(traits);
+          appendMessage(`Based on your profile, you might excel in: ${careers}`, "bot");
+          
+          // Restart option
+          appendMessage("Thank you for using the AI Personality Chatbot! Refresh the page to start again.", "bot");
+        }, 1500);
+      }, 500);
+    }, 1500);
+  }
+
+  // Welcome message
+  setTimeout(() => {
+    appendMessage("Welcome to the AI Personality Chatbot! I'll ask you a series of questions to analyze your personality traits.", "bot");
+    setTimeout(() => {
+      appendMessage("Please answer honestly for the most accurate results. Let's begin!", "bot");
+      // Hide text input initially as we're starting with option buttons
+      document.getElementById("input-area").style.display = "none";
+      setTimeout(askNextQuestion, 1000);
+    }, 1000);
+  }, 500);
+</script>
+
+</body>
+</html>
